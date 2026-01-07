@@ -6,10 +6,11 @@ section .data
          db "4. Delete File", 10
     menu_len equ $-menu
 
-    create_msg db "Creating a new file...", 10
-    create_msg_len equ $-create_msg
-    file_name db "Enter filename: ", 0
-    file_name_len equ $-file_name
+    prompt_create_file db "Enter filename to create: ", 0
+    prompt_create_file_len equ $-prompt_create_file
+
+    prompt_read_file db "Enter filename to read: ", 0
+    prompt_read_file_len equ $-prompt_read_file
 
 section .bss
     input resb 2
@@ -43,37 +44,38 @@ _start:
     ; if not exit
     jmp exit
 
-read_file:
-    mov rax, 1        ; sys write
-    mov rdi, 1        ; stdout
-    mov rsi, file_name
-    mov rdx, file_name_len
-    syscall
-
-    ; read filename
-    mov rax, 0
-    mov rdi, 0        ; stdin
-    mov rsi, filename
-    mov rdx, 100
-    syscall
-
-    mov rcx, filename
-
 create_file:
-    mov rax, 1        ; sys write
-    mov rdi, 1        ; stdout
-    mov rsi, file_name
-    mov rdx, file_name_len
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, prompt_create_file
+    mov rdx, prompt_create_file_len
     syscall
-    
-    ; read filename
+
     mov rax, 0
-    mov rdi, 0        ; stdin
+    mov rdi, 0
     mov rsi, filename
     mov rdx, 100
     syscall
 
     mov rcx, filename
+    jmp find_newline
+
+read_file:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, prompt_read_file
+    mov rdx, prompt_read_file_len
+    syscall
+
+    mov rax, 0
+    mov rdi, 0
+    mov rsi, filename
+    mov rdx, 100
+    syscall
+
+    mov rcx, filename
+    jmp find_newline_for_read
+
 find_newline:
     mov al, [rcx]
     cmp al, 10
@@ -82,6 +84,7 @@ find_newline:
     je after_filename_cleanup
     inc rcx 
     jmp find_newline
+
 find_newline_for_read:
     mov al, [rcx]    ; load byte
     cmp al, 10
@@ -90,10 +93,13 @@ find_newline_for_read:
     je after_filename_cleanup_read
     inc rcx          ; move to next byte
     jmp find_newline_for_read 
+
 remove_newline:
     mov byte [rcx], 0
+
 remove_newline_read:
     mov byte [rcx], 0
+
 after_filename_cleanup:
     ; call sys open to create file
     mov rax, 2        ; sys open
@@ -107,10 +113,11 @@ after_filename_cleanup:
     syscall
 
     jmp exit
+
 after_filename_cleanup_read:
     ; call sys open to read file
     mov rax, 2        ; sys open
-    mov rdx, filename ; filename pointer
+    mov rdi, filename ; filename pointer
     mov rsi, 0        ; flags: O_RDONLY
     syscall
 
@@ -136,6 +143,7 @@ after_filename_cleanup_read:
     syscall
 
     jmp exit
+
 exit:
     mov rax, 60       ; sys exit
     xor rdi, rdi      ; status 0
